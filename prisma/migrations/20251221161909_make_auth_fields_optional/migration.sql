@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "users" ALTER COLUMN "password" DROP NOT NULL,
+ALTER COLUMN "oauth_id" DROP NOT NULL,
+ALTER COLUMN "provider" DROP NOT NULL;

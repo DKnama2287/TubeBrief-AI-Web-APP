@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(191)
+  email        String        @unique @db.VarChar(191)
+  password     String?       @db.VarChar(191)
+  image        String?
+  oauth_id     String?
+  provider     String?       @db.VarChar(191)
+  coins        Int           @default(50)
+  createdAt    DateTime      @default(now())
+  coinSpends   CoinSpend[]
+  summaries    Summary[]
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Summary {
+  id         String      @id @default(uuid()) @db.Uuid
+  user_id    Int
+  title      String
+  url        String
+  response   String?
+  created_at DateTime    @default(now())
+  coinSpends CoinSpend[]
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("summary")
+
+  @@index([url, created_at])
+}
+
+model Transaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    Int
+  amount     Int
+  status     Int      @db.SmallInt @default(2)
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model CoinSpend {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  summary_id String   @db.Uuid
+  created_at DateTime @default(now())
+  summary    Summary  @relation(fields: [summary_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("coins_spend")
+}
+
+model Products {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(30)
+  price_id   String   @db.VarChar(191)
+  product_id String   @db.VarChar(191)
+  currency   String   @db.VarChar(10)
+  amount     Int
+  coins      Int      @default(0)
+  created_at DateTime @default(now())
+
+  @@map("products")
+}
