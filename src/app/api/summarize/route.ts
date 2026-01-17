@@ -179,10 +179,23 @@ ${chunkSummaries.map((summary, i) => `\n#### Part ${i + 1}:\n${summary}`).join('
 
       console.log("✅ Summary generated successfully!");
 
-      // Save to database
-      await minusCoins(session?.user?.id!);
-      await coinsSpend(session?.user?.id!, body?.id!);
-      await updateSummary(finalSummary, body?.id!);
+      // Save to database with error handling
+      try {
+        console.log("💰 Deducting coins from user:", session?.user?.id);
+        await minusCoins(session?.user?.id!);
+        
+        console.log("💸 Recording coin spend for summary:", body?.id);
+        await coinsSpend(session?.user?.id!, body?.id!);
+        
+        console.log("💾 Updating summary in database");
+        await updateSummary(finalSummary, body?.id!);
+        
+        console.log("✅ All database operations completed successfully!");
+      } catch (dbError) {
+        console.error("❌ Database error while saving summary:", dbError);
+        // Return the summary anyway since it was generated
+        // But log the error for investigation
+      }
 
       return NextResponse.json({
         message: "Podcast video Summary",

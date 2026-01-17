@@ -34,29 +34,26 @@ export const getUserCoins = async (user_id: number | string) => {
   });
 };
 
-export const getCoinsSpend = unstable_cache(
-  async (user_id: number | string) => {
-    return await prisma.coinSpend.findMany({
-      where: {
-        user_id: Number(user_id),
-      },
-      include: {
-        summary: {
-          select: {
-            id: true,
-            url: true,
-            title: true,
-          },
+// Get coins spend history - no cache for instant updates
+export const getCoinsSpend = async (user_id: number | string) => {
+  return await prisma.coinSpend.findMany({
+    where: {
+      user_id: Number(user_id),
+    },
+    include: {
+      summary: {
+        select: {
+          id: true,
+          url: true,
+          title: true,
         },
       },
-      orderBy: {
-        id: "desc",
-      },
-    });
-  },
-  ["coinsSpend"],
-  { revalidate: 60 * 60, tags: ["coinsSpend"] }
-);
+    },
+    orderBy: {
+      id: "desc",
+    },
+  });
+};
 
 // export const getUserCoins = async (user_id: number | string) => {
 //   const user = await prisma.user.findUnique({

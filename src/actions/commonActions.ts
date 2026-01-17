@@ -34,6 +34,8 @@ export async function coinsSpend (user_id :string | number , summary_id : string
             summary_id: summary_id,
         }
     });
+    // Revalidate coins-spend page to show new entry
+    revalidatePath("/coins-spend");
 }
 
 export async function updateSummary (data:string ,id : string) : Promise<void> {
