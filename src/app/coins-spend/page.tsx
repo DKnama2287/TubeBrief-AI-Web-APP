@@ -1,153 +1,142 @@
 import React from "react";
 import { authOptions, CustomSession } from "../api/auth/[...nextauth]/options";
 import { getServerSession } from "next-auth";
-import {
-  getCoinsSpend,
-  getUserCoins,
-} from "@/actions/fetchActions";
+import { redirect } from "next/navigation";
+import { getCoinsSpend, getUserCoins } from "@/actions/fetchActions";
 import DashNav from "@/components/dashboard/DashNav";
+import { Coins, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
-export default async function CoinsSpend() {
+export const dynamic = "force-dynamic";
+
+export default async function CoinsSpendPage() {
   const session: CustomSession | null = await getServerSession(authOptions);
-  const userCoins = await getUserCoins(session?.user?.id!);
-  const coinsSpends = await getCoinsSpend(session?.user?.id!);
-  
+  if (!session?.user) redirect("/");
+
+  const [coinsData, spends] = await Promise.all([
+    getUserCoins(session.user.id!),
+    getCoinsSpend(session.user.id!),
+  ]);
+
+  const coins = coinsData?.coins ?? 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-pink-50/30 dark:from-gray-900 dark:via-purple-950/30 dark:to-pink-950/30">
-      <DashNav user={session?.user!} userCoins={userCoins} />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 text-center animate-fadeInUp">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50 mb-4">
-              <span className="text-4xl">💰</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Coins Spend History
-              </span>
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Track all your summary generations and coin usage
-            </p>
-          </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <DashNav user={session.user} coins={coins} />
 
-        {/* Stats Card */}
-        {coinsSpends && coinsSpends.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-600 dark:to-pink-600 rounded-2xl shadow-lg p-6 mb-8 text-white animate-fadeInUp">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 mb-1">Total Summaries Generated</p>
-                <p className="text-4xl font-bold">{coinsSpends.length}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm opacity-90 mb-1">Total Coins Spent</p>
-                <p className="text-4xl font-bold">{coinsSpends.length * 10}</p>
-              </div>
-              <div className="text-6xl opacity-80">📊</div>
-            </div>
-          </div>
-        )}
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 
-        {/* Coins Spend List */}
-        {coinsSpends && coinsSpends.length > 0 ? (
-          <div className="space-y-4">
-            {coinsSpends.map((item, index) => (
-              <Link
-                key={index}
-                href={`/summarize?id=${item.summary_id}`}
-                className="block"
-              >
-                <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border-l-4 border-purple-500 dark:border-purple-600 hover:border-purple-600 dark:hover:border-purple-500 cursor-pointer transform hover:-translate-y-1 animate-fadeInUp"
-                  style={{ animationDelay: `${index * 0.1}s` }}
+        {/* Header */}
+        <div className="mb-8 flex flex-wrap items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-950/60">
+            <Coins className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Coin History</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Track how your coins were spent</p>
+          </div>
+          <div className="ml-auto rounded-full bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-400">
+            {coins} coins remaining
+          </div>
+        </div>
+
+        {spends.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl dark:bg-slate-800">🪙</div>
+            <p className="font-medium text-slate-700 dark:text-slate-300">No coins spent yet</p>
+            <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">Your coin usage history will appear here</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 md:hidden">
+              {spends.map((spend) => (
+                <div
+                  key={spend.id}
+                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    {/* Summary Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-2xl">🎬</span>
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 line-clamp-1">
-                          {item.summary?.title || "Untitled Summary"}
-                        </h3>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                        <p className="flex items-start gap-2">
-                          <span className="font-medium min-w-[60px]">URL:</span>
-                          <span className="break-all line-clamp-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                            {item.summary?.url}
-                          </span>
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <span className="font-medium">Generated:</span>
-                          <span>{new Date(item.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}</span>
-                        </p>
-                      </div>
-                    </div>
+                  {/* Title row */}
+                  <p className="mb-3 font-semibold leading-snug text-slate-900 dark:text-white">
+                    {spend.summary?.title ?? "Untitled"}
+                  </p>
 
-                    {/* Coins Badge */}
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 px-4 py-2 rounded-full">
-                        <span className="text-sm font-semibold">-10 Coins</span>
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                        Click to view
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
-                        </svg>
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {new Date(spend.created_at).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                        −10 coins
                       </span>
+                      {spend.summary?.id && (
+                        <Link
+                          href={`/summarize?id=${spend.summary.id}`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-violet-200 px-2.5 py-1 text-xs font-semibold text-violet-600 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/40"
+                        >
+                          View <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 animate-fadeInUp">
-            <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50 mb-4">
-                <span className="text-6xl">📝</span>
-              </div>
+              ))}
             </div>
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              No Summaries Generated Yet
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-              Start generating YouTube video summaries to see your history here.
-            </p>
-            <Link
-              href="/dashboard"
-              className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-            >
-              Generate Your First Summary
-            </Link>
-          </div>
-        )}
 
-        {/* Back to Dashboard */}
-        {coinsSpends && coinsSpends.length > 0 && (
-          <div className="mt-8 text-center animate-fadeInUp" style={{ animationDelay: `${coinsSpends.length * 0.1}s` }}>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-semibold transition-colors duration-200 group"
-            >
-              <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
-              </svg>
-              Back to Dashboard
-            </Link>
-          </div>
+            {/* Desktop table */}
+            <div className="hidden overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50 text-left dark:border-slate-800 dark:bg-slate-800/50">
+                    <th className="px-6 py-3.5 font-semibold text-slate-700 dark:text-slate-300">Video</th>
+                    <th className="px-6 py-3.5 font-semibold text-slate-700 dark:text-slate-300">Date</th>
+                    <th className="px-6 py-3.5 text-right font-semibold text-slate-700 dark:text-slate-300">Coins</th>
+                    <th className="px-6 py-3.5 text-right font-semibold text-slate-700 dark:text-slate-300">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {spends.map((spend) => (
+                    <tr key={spend.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="px-6 py-4">
+                        <p className="max-w-xs truncate font-medium text-slate-900 dark:text-white">
+                          {spend.summary?.title ?? "Untitled"}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                        {new Date(spend.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                          −10 coins
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {spend.summary?.id && (
+                          <Link
+                            href={`/summarize?id=${spend.summary.id}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                          >
+                            View <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

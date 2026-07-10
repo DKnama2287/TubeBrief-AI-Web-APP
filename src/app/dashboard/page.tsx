@@ -1,85 +1,67 @@
-import DashNav from '@/components/dashboard/DashNav'
-import React from 'react'
-import { authOptions, CustomSession } from '../api/auth/[...nextauth]/options'
-import { getServerSession } from 'next-auth/next';
-import { getUserCoins, getUserOldSummaries } from '@/actions/fetchActions';
-import UrlInput from '@/components/dashboard/UrlInput';
-import OldSummaryCard from '@/components/dashboard/OldSummaryCard';
+import DashNav from "@/components/dashboard/DashNav";
+import OldSummaryCard from "@/components/dashboard/OldSummaryCard";
+import UrlInput from "@/components/dashboard/UrlInput";
+import { authOptions, CustomSession } from "../api/auth/[...nextauth]/options";
+import { getUserCoins, getUserOldSummaries } from "@/actions/fetchActions";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
-// Make this page dynamic - no caching for instant coin updates
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
-export default async function dashboard() {
+export default async function DashboardPage() {
+  const session: CustomSession | null = await getServerSession(authOptions);
+  if (!session?.user) redirect("/");
 
-    const session:CustomSession | null= await getServerSession(authOptions);
-    const userCoins = await getUserCoins(session?.user?.id!);
-    const oldSummaries = await getUserOldSummaries(Number(session?.user?.id!));
-  
+  const [coinsData, summaries] = await Promise.all([
+    getUserCoins(session.user.id!),
+    getUserOldSummaries(Number(session.user.id!)),
+  ]);
+
+  const coins = coinsData?.coins ?? 0;
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900'>
-      <DashNav user={session?.user!} userCoins={userCoins} />
-      
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8 animate-fadeInUp">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            Welcome back, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{session?.user?.name?.split(' ')[0]}</span>! 
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <DashNav user={session.user} coins={coins} />
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Welcome back, {session.user.name?.split(" ")[0]} 👋
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Create amazing podcast summaries with AI</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Paste a YouTube URL below to generate a new summary.
+          </p>
         </div>
 
-        {/* URL Input Card */}
-        <div className="animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-          <UrlInput user={session?.user!} userCoins={userCoins} />
+        <div className="mb-10">
+          <UrlInput user={session.user} />
         </div>
 
-        {/* Summaries Section */}
-        <div className="mt-16 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
-          {oldSummaries.length > 0 ? (
-            <>
-              <div className="mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                  Your Summaries
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  You have created {oldSummaries.length} {oldSummaries.length === 1 ? 'summary' : 'summaries'}
-                </p>
+        <div>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Your Summaries</h2>
+            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-400">
+              {summaries.length} total
+            </span>
+          </div>
+
+          {summaries.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl dark:bg-slate-800">
+                🎬
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {oldSummaries.map((item, index) => (
-                  <div 
-                    key={index} 
-                    className="animate-fadeInUp" 
-                    style={{ animationDelay: `${0.3 + index * 0.1}s` }}
-                  >
-                    <OldSummaryCard summary={item} />
-                  </div>
-                ))}
-              </div>
-            </>
+              <p className="font-medium text-slate-700 dark:text-slate-300">No summaries yet</p>
+              <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">Paste a YouTube URL above to get started</p>
+            </div>
           ) : (
-            <div className="text-center py-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700">
-              <div className="mb-6">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 mb-4 animate-float">
-                  <span className="text-5xl">📝</span>
-                </div>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                No Summaries Yet
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                Add a YouTube video URL above to create your first AI-powered podcast summary!
-              </p>
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-500">
-                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
-                <span>Ready to summarize any podcast in seconds</span>
-              </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {summaries.map((s) => (
+                <OldSummaryCard key={s.id} id={s.id} title={s.title} url={s.url} created_at={s.created_at} response={s.response} />
+              ))}
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
-  )
+  );
 }

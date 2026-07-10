@@ -1,7 +1,5 @@
 "use client";
-import { Dispatch } from "react";
-import { SetStateAction} from "react";
-import {signOut} from "next-auth/react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,27 +9,32 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { signOut } from "next-auth/react";
+import { ReactNode } from "react";
 
-export default function LogoutModal({open, setOpen }:{open:boolean , setOpen:Dispatch<SetStateAction<boolean>>}) {
-
-    const handleLogout=()=>{
-        signOut({callbackUrl:'/', redirect:true });
-    }
-
+export default function LogoutModal({ children }: { children: ReactNode }) {
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your
-            current session from your device.
+          <AlertDialogTitle className="text-slate-900">Sign out?</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-500">
+            You will be signed out of TubeBrief AI. Your summaries and coins will be saved.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleLogout}>Continue</AlertDialogAction>
+          <AlertDialogCancel className="rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90"
+          >
+            Sign out
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

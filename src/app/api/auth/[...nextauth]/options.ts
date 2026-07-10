@@ -43,8 +43,8 @@ export const authOptions: AuthOptions = {
         user.id = data?.id.toString();
         return true;
       } catch (error) {
-        console.log("The error is", error);
-        return false;
+        console.error("SignIn DB error:", error);
+        return "/?error=DatabaseError";
       }
     },
 

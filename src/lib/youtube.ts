@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 const youtube = google.youtube({
   version: 'v3',
@@ -12,148 +13,81 @@ export interface YouTubeTranscriptResult {
   channelTitle: string;
 }
 
-/**
- * Extract video ID from YouTube URL
- */
 function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /^([a-zA-Z0-9_-]{11})$/, // Direct video ID
+    /^([a-zA-Z0-9_-]{11})$/,
   ];
-
   for (const pattern of patterns) {
     const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
+    if (match?.[1]) return match[1];
   }
-
   return null;
 }
 
-/**
- * Get video details and captions using YouTube Data API v3
- */
 export async function getYouTubeTranscript(url: string): Promise<YouTubeTranscriptResult> {
-  try {
-    const videoId = extractVideoId(url);
-    
-    if (!videoId) {
-      throw new Error('Invalid YouTube URL');
-    }
+  const videoId = extractVideoId(url);
+  if (!videoId) throw new Error('Invalid YouTube URL');
 
-    console.log('🎬 Fetching video details for:', videoId);
+  console.log('🎬 Fetching video details for:', videoId);
 
-    // Get video details
-    const videoResponse = await youtube.videos.list({
-      part: ['snippet', 'contentDetails'],
-      id: [videoId],
-    });
+  // Step 1: Get video metadata via YouTube Data API
+  const videoResponse = await youtube.videos.list({
+    part: ['snippet'],
+    id: [videoId],
+  });
 
-    if (!videoResponse.data.items || videoResponse.data.items.length === 0) {
-      throw new Error('Video not found');
-    }
-
-    const video = videoResponse.data.items[0];
-    const title = video.snippet?.title || 'Unknown Title';
-    const description = video.snippet?.description || '';
-    const channelTitle = video.snippet?.channelTitle || 'Unknown Channel';
-
-    console.log('✅ Video found:', title);
-
-    // Get available captions
-    const captionsResponse = await youtube.captions.list({
-      part: ['snippet'],
-      videoId: videoId,
-    });
-
-    if (!captionsResponse.data.items || captionsResponse.data.items.length === 0) {
-      throw new Error('No captions available for this video');
-    }
-
-    // Find English caption track
-    let captionTrack = captionsResponse.data.items.find(
-      (item) => item.snippet?.language === 'en'
-    );
-
-    // If no English, take the first available
-    if (!captionTrack) {
-      captionTrack = captionsResponse.data.items[0];
-    }
-
-    const captionId = captionTrack.id;
-    console.log('📝 Caption track found:', captionTrack.snippet?.language);
-
-    // Download the caption
-    try {
-      const captionDownload = await youtube.captions.download({
-        id: captionId!,
-        tfmt: 'srt', // Get as SRT format
-      });
-
-      let transcriptText = '';
-      
-      if (typeof captionDownload.data === 'string') {
-        transcriptText = captionDownload.data;
-      } else if (captionDownload.data) {
-        transcriptText = JSON.stringify(captionDownload.data);
-      }
-
-      // Clean SRT format (remove timestamps and numbers)
-      const cleanedText = cleanSRTFormat(transcriptText);
-
-      console.log('✅ Transcript downloaded successfully');
-      console.log(`   Length: ${cleanedText.length} characters`);
-
-      return {
-        text: cleanedText,
-        title,
-        description,
-        channelTitle,
-      };
-    } catch (downloadError) {
-      console.error('❌ Error downloading caption:', downloadError);
-      
-      // Fallback: Use video description or throw error
-      if (description && description.length > 100) {
-        console.log('⚠️ Using video description as fallback');
-        return {
-          text: description,
-          title,
-          description,
-          channelTitle,
-        };
-      }
-      
-      throw new Error('Unable to download captions. The video may have restricted captions.');
-    }
-
-  } catch (error) {
-    console.error('❌ YouTube API Error:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to get YouTube transcript: ${error.message}`);
-    }
-    throw new Error('Failed to get YouTube transcript');
+  if (!videoResponse.data.items?.length) {
+    throw new Error('Video not found');
   }
-}
 
-/**
- * Clean SRT subtitle format
- */
-function cleanSRTFormat(srtText: string): string {
-  // Remove sequence numbers (e.g., "1", "2", "3")
-  let cleaned = srtText.replace(/^\d+\s*$/gm, '');
-  
-  // Remove timestamps (e.g., "00:00:00,000 --> 00:00:02,000")
-  cleaned = cleaned.replace(/\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}/g, '');
-  
-  // Remove extra whitespace and empty lines
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  cleaned = cleaned.trim();
-  
-  // Join lines into paragraphs
-  const lines = cleaned.split('\n').filter(line => line.trim().length > 0);
-  cleaned = lines.join(' ');
-  
-  return cleaned;
+  const snippet = videoResponse.data.items[0].snippet!;
+  const title = snippet.title || 'Unknown Title';
+  const description = snippet.description || '';
+  const channelTitle = snippet.channelTitle || 'Unknown Channel';
+
+  console.log('✅ Video found:', title);
+
+  // Step 2: Fetch transcript using youtube-transcript (no OAuth needed)
+  try {
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
+
+    if (transcriptItems && transcriptItems.length > 0) {
+      const text = transcriptItems
+        .map((item) => item.text.trim())
+        .filter(Boolean)
+        .join(' ');
+
+      console.log('✅ Transcript fetched via youtube-transcript');
+      console.log(`   Length: ${text.length} characters`);
+
+      return { text, title, description, channelTitle };
+    }
+
+    // Try without language filter if English not found
+    const allItems = await YoutubeTranscript.fetchTranscript(videoId);
+    if (allItems && allItems.length > 0) {
+      const text = allItems
+        .map((item) => item.text.trim())
+        .filter(Boolean)
+        .join(' ');
+
+      console.log('✅ Transcript fetched (auto-detected language)');
+      console.log(`   Length: ${text.length} characters`);
+
+      return { text, title, description, channelTitle };
+    }
+  } catch (transcriptError) {
+    console.warn('⚠️ youtube-transcript failed:', (transcriptError as Error).message);
+  }
+
+  // Step 3: Fallback to video description
+  if (description && description.length > 100) {
+    console.log('⚠️ No transcript available — using video description as fallback');
+    return { text: description, title, description, channelTitle };
+  }
+
+  throw new Error(
+    'No transcript available for this video. Please try a video with captions enabled.'
+  );
 }

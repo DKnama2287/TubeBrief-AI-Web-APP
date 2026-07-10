@@ -10,6 +10,6 @@ export default defineConfig({
   },
   datasource: {
     // Use direct connection for migrations (no connection pooler)
-    url: process.env["DIRECT_DATABASE_URL"] || process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
   },
 });
